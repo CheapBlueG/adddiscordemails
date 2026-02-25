@@ -290,6 +290,94 @@ async def add_email(interaction: discord.Interaction, email: str, group: str):
             print(f"Error sending followup in /addemail: {followup_error}")
 
 
+@tree.command(name="assigngroup", description="Assign a user to a group (admin only)")
+@app_commands.describe(user="User to assign", group="Group K or J")
+@app_commands.choices(group=[app_commands.Choice(name="K", value="K"), app_commands.Choice(name="J", value="J")])
+async def assign_group(interaction: discord.Interaction, user: discord.Member, group: str):
+    try:
+        await interaction.response.defer(ephemeral=True)
+        if not any(role.id == ADMIN_ROLE_ID for role in interaction.user.roles):
+            await interaction.followup.send("You do not have permission to use this command.", ephemeral=True)
+            return
+        email_data = load_emails()
+        user_id = str(user.id)
+        old_group = email_data["user_groups"].get(user_id, None)
+        email_data["user_groups"][user_id] = group.upper()
+        save_emails(email_data)
+        if old_group:
+            await interaction.followup.send(f"✅ {user.mention} has been reassigned from group **{old_group}** to group **{group.upper()}**.", ephemeral=True)
+        else:
+            await interaction.followup.send(f"✅ {user.mention} has been assigned to group **{group.upper()}**.", ephemeral=True)
+        log_channel = client.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            await log_channel.send(f"Admin: {interaction.user.name} assigned {user.name} to Group {group.upper()}, Time: {datetime.now().isoformat()}")
+    except Exception as e:
+        print(f"Error in /assigngroup command: {e}")
+        try:
+            await interaction.followup.send("An error occurred while assigning the group.", ephemeral=True)
+        except discord.errors.HTTPException as followup_error:
+            print(f"Error sending followup in /assigngroup: {followup_error}")
+
+
+@tree.command(name="viewstock", description="View current email stock for your group")
+async def view_stock(interaction: discord.Interaction):
+    try:
+        await interaction.response.defer(ephemeral=True)
+        if interaction.channel_id != DISPENSE_CHANNEL_ID:
+            await interaction.followup.send("This command can only be used in the designated dispense channel.", ephemeral=True)
+            return
+        # Check for restricted role or admin role
+        has_permission = any(role.id in (RESTRICTED_ROLE_ID, ADMIN_ROLE_ID) for role in interaction.user.roles)
+        if not has_permission:
+            await interaction.followup.send("You do not have permission to use this command.", ephemeral=True)
+            return
+        email_data = load_emails()
+        lines = ["📦 **Current Email Stock:**\n"]
+        for group_name, group_key in [("K", "group_k"), ("J", "group_j")]:
+            group_data = email_data.get(group_key, {})
+            email_count = len(group_data.get("emails", []))
+            token_count = len(group_data.get("token_emails", []))
+            lines.append(f"**Group {group_name}:**")
+            lines.append(f"  • Email:Pass — {email_count}")
+            lines.append(f"  • Token Emails — {token_count}")
+            lines.append("")
+        await interaction.followup.send("\n".join(lines), ephemeral=True)
+    except Exception as e:
+        print(f"Error in /viewstock command: {e}")
+        try:
+            await interaction.followup.send("An error occurred while viewing stock.", ephemeral=True)
+        except discord.errors.HTTPException as followup_error:
+            print(f"Error sending followup in /viewstock: {followup_error}")
+
+
+@tree.command(name="stockcount", description="Quick stock count for all groups")
+async def stock_count(interaction: discord.Interaction):
+    try:
+        await interaction.response.defer(ephemeral=True)
+        if interaction.channel_id != DISPENSE_CHANNEL_ID:
+            await interaction.followup.send("This command can only be used in the designated dispense channel.", ephemeral=True)
+            return
+        email_data = load_emails()
+        k_emails = len(email_data.get("group_k", {}).get("emails", []))
+        k_tokens = len(email_data.get("group_k", {}).get("token_emails", []))
+        j_emails = len(email_data.get("group_j", {}).get("emails", []))
+        j_tokens = len(email_data.get("group_j", {}).get("token_emails", []))
+        total = k_emails + k_tokens + j_emails + j_tokens
+        await interaction.followup.send(
+            f"📊 **Stock Count:**\n"
+            f"Group K: {k_emails} emails, {k_tokens} tokens\n"
+            f"Group J: {j_emails} emails, {j_tokens} tokens\n"
+            f"**Total: {total}**",
+            ephemeral=True,
+        )
+    except Exception as e:
+        print(f"Error in /stockcount command: {e}")
+        try:
+            await interaction.followup.send("An error occurred while counting stock.", ephemeral=True)
+        except discord.errors.HTTPException as followup_error:
+            print(f"Error sending followup in /stockcount: {followup_error}")
+
+
 # ====================== TOKEN COMMANDS ======================
 
 @tree.command(name="addtoken", description="Add email:pass:token:clientid (admin only)")
