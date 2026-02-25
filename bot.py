@@ -171,16 +171,16 @@ def split_message(content, max_length=2000):
 async def on_ready():
     print(f"Logged in as {client.user} (ID: {client.user.id})")
     try:
-        # Clear old global commands (removes duplicates)
-        tree.clear_commands(guild=None)
-        await tree.sync()
-        print("Cleared global commands")
-
-        # Sync to guild only (instant)
+        # Copy commands to guild first (instant sync)
         guild = discord.Object(id=GUILD_ID)
         tree.copy_global_to(guild=guild)
         await tree.sync(guild=guild)
         print(f"Slash commands synced instantly to guild {GUILD_ID}")
+
+        # Then clear old global commands (removes duplicates)
+        tree.clear_commands(guild=None)
+        await tree.sync()
+        print("Cleared global commands")
     except Exception as e:
         print(f"Error syncing slash commands: {e}")
     print("------")
