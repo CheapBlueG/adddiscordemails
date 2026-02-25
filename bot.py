@@ -171,6 +171,12 @@ def split_message(content, max_length=2000):
 async def on_ready():
     print(f"Logged in as {client.user} (ID: {client.user.id})")
     try:
+        # Clear old global commands (removes duplicates)
+        tree.clear_commands(guild=None)
+        await tree.sync()
+        print("Cleared global commands")
+
+        # Sync to guild only (instant)
         guild = discord.Object(id=GUILD_ID)
         tree.copy_global_to(guild=guild)
         await tree.sync(guild=guild)
