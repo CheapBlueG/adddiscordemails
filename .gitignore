@@ -1,0 +1,14 @@
+# Environment secrets
+.env
+
+# Data files
+data/
+emails.json
+emailstouse.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
