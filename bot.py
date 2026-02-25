@@ -21,6 +21,7 @@ LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID", "1399288304767074404"))
 DISPENSE_CHANNEL_ID = int(os.getenv("DISPENSE_CHANNEL_ID", "1399288331270885456"))
 RESTRICTED_ROLE_ID = int(os.getenv("RESTRICTED_ROLE_ID", "1399298671627079791"))
 ADMIN_ROLE_ID = int(os.getenv("ADMIN_ROLE_ID", "0"))  # Set in .env
+GUILD_ID = int(os.getenv("GUILD_ID", "1399288278066270218"))
 
 # Use a 'data' folder relative to the script for portability
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"))
@@ -164,14 +165,19 @@ def split_message(content, max_length=2000):
     return messages
 
 
+# ====================== BOT STARTUP ======================
+
 @client.event
 async def on_ready():
-    print(f"Logged in as {client.user}")
+    print(f"Logged in as {client.user} (ID: {client.user.id})")
     try:
-        await tree.sync()
-        print("Slash commands synced")
+        guild = discord.Object(id=GUILD_ID)
+        tree.copy_global_to(guild=guild)
+        await tree.sync(guild=guild)
+        print(f"Slash commands synced instantly to guild {GUILD_ID}")
     except Exception as e:
         print(f"Error syncing slash commands: {e}")
+    print("------")
 
 
 # ====================== ORIGINAL COMMANDS ======================
@@ -326,7 +332,6 @@ async def view_stock(interaction: discord.Interaction):
         if interaction.channel_id != DISPENSE_CHANNEL_ID:
             await interaction.followup.send("This command can only be used in the designated dispense channel.", ephemeral=True)
             return
-        # Check for restricted role or admin role
         has_permission = any(role.id in (RESTRICTED_ROLE_ID, ADMIN_ROLE_ID) for role in interaction.user.roles)
         if not has_permission:
             await interaction.followup.send("You do not have permission to use this command.", ephemeral=True)
